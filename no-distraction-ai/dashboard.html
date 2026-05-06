@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>No Distraction AI – Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06060a;--s1:#0c0c10;--s2:#111116;--s3:#18181e;--s4:#1e1e26;
+  --border:#222228;--border2:#2e2e38;
+  --amber:#e8a030;--amber-dim:rgba(232,160,48,.1);--amber-mid:rgba(232,160,48,.2);
+  --green:#2ecc8a;--green-dim:rgba(46,204,138,.1);
+  --red:#e85555;--red-dim:rgba(232,85,85,.1);
+  --blue:#6699ff;--txt:#dcdce4;--muted:#56565e;--muted2:#3a3a44;
+}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'JetBrains Mono',monospace;}
+body{
+  display:grid;grid-template-rows:auto 1fr;min-height:100vh;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:48px 48px;
+}
+
+/* NAV */
+nav{display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:60px;background:rgba(6,6,10,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
+.nav-logo{display:flex;align-items:center;gap:12px;}
+.nav-mark{width:36px;height:36px;border:2px solid var(--amber);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 16px rgba(232,160,48,.15);}
+.nav-name{font-family:'Bebas Neue';font-size:24px;letter-spacing:2px;color:var(--amber);}
+.nav-sub{font-size:9px;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;margin-top:2px;}
+.nav-right{display:flex;align-items:center;gap:14px;font-size:10px;color:var(--muted);}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--muted2);display:inline-block;margin-right:5px;}
+.sdot.ok{background:var(--green);box-shadow:0 0 6px var(--green);}
+.sdot.bad{background:var(--red);}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:300px 1fr;gap:24px;max-width:1200px;width:100%;margin:0 auto;padding:32px 24px;align-items:start;}
+.sidebar{display:flex;flex-direction:column;gap:16px;}
+
+/* CARD */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.card-head{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--s2);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--amber);font-weight:700;}
+.card-body{padding:16px;}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;}
+.stat{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center;}
+.stat-num{font-family:'Bebas Neue';font-size:28px;color:var(--amber);line-height:1;}
+.stat-label{font-size:8px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-top:3px;}
+
+/* FIELDS */
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
+.field:last-child{margin-bottom:0;}
+.field label{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
+.field input,.field textarea,.field select{background:var(--s3);border:1px solid var(--border2);border-radius:5px;color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 11px;outline:none;transition:border-color .15s;resize:none;}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--amber);}
+.field input::placeholder,.field textarea::placeholder{color:var(--muted);}
+.field select option{background:var(--s3);}
+.field-hint{font-size:9px;color:var(--muted);line-height:1.6;}
+.field-err{font-size:9px;color:var(--red);min-height:14px;margin-top:2px;}
+
+/* TOOLTIP */
+.tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--border2);color:var(--muted);font-size:9px;cursor:help;flex-shrink:0;}
+.tip:hover .tip-box{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(0);}
+.tip-box{position:absolute;bottom:calc(100%+6px);left:50%;transform:translateX(-50%) translateY(4px);background:var(--s4);border:1px solid var(--border2);border-radius:5px;padding:9px 11px;width:240px;font-size:9px;color:var(--txt);line-height:1.65;pointer-events:none;opacity:0;transition:.15s;z-index:99;white-space:normal;text-align:left;letter-spacing:0;text-transform:none;font-weight:400;}
+.tip-box::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border2);}
+
+/* API ROW */
+.api-row{display:flex;gap:8px;}
+.api-input{flex:1;background:var(--s3);border:1px solid var(--border2);border-radius:5px;color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:11px;padding:9px 12px;outline:none;transition:border-color .15s;}
+.api-input:focus{border-color:var(--amber);}
+.api-input::placeholder{color:var(--muted);}
+.api-save-btn{background:var(--amber);border:none;border-radius:5px;color:#000;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:0 14px;cursor:pointer;transition:.15s;}
+.api-save-btn:hover{opacity:.85;}
+.api-status{margin-top:7px;font-size:9px;}
+.api-warn{margin-top:10px;padding:8px 10px;background:var(--amber-dim);border:1px solid var(--amber-mid);border-radius:4px;font-size:9px;color:rgba(232,160,48,.8);line-height:1.6;}
+
+/* BUTTONS */
+.act-btn{width:100%;background:var(--amber);border:none;border-radius:5px;color:#000;font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;padding:10px;cursor:pointer;transition:.15s;margin-top:4px;display:block;}
+.act-btn:hover{opacity:.85;}
+.act-btn.red{background:var(--red);color:#fff;}
+.act-btn.outline{background:none;border:1px solid var(--border2);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:400;letter-spacing:0;}
+.act-btn.outline:hover{color:var(--txt);}
+.sm-btn{background:none;border:1px solid var(--border2);color:var(--muted);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;padding:5px 11px;cursor:pointer;transition:.15s;}
+.sm-btn:hover{color:var(--amber);border-color:var(--amber);}
+.sm-btn.red:hover{color:var(--red);border-color:rgba(232,85,85,.4);}
+
+/* MODEL CHIPS */
+.model-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.mchip{font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border:1px solid var(--border2);background:var(--s3);color:var(--muted);border-radius:3px;cursor:pointer;transition:.15s;}
+.mchip:hover{color:var(--amber);border-color:var(--amber);background:var(--amber-dim);}
+
+/* PRESETS */
+.presets{display:flex;flex-wrap:wrap;gap:5px;}
+.preset{font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 9px;border:1px solid var(--border2);background:var(--s3);color:var(--muted);border-radius:3px;cursor:pointer;transition:.15s;}
+.preset:hover{color:var(--amber);border-color:var(--amber);background:var(--amber-dim);}
+
+/* IO */
+.io-row{display:flex;gap:8px;}
+.io-btn{flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:5px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:8px;cursor:pointer;transition:.15s;text-align:center;}
+.io-btn:hover{color:var(--amber);border-color:var(--amber);background:var(--amber-dim);}
+
+/* ══════════════════════
+   PIN CARD
+══════════════════════ */
+.pin-status-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;background:var(--s2);border-radius:6px;
+  border:1px solid var(--border);margin-bottom:14px;
+}
+.pin-status-left{display:flex;align-items:center;gap:9px;font-size:11px;color:var(--txt);}
+.pin-badge{font-size:8px;padding:2px 7px;border-radius:2px;border:1px solid var(--border2);color:var(--muted);}
+.pin-badge.on{color:var(--amber);border-color:rgba(232,160,48,.3);background:var(--amber-dim);}
+
+/* big toggle */
+.big-tog{position:relative;width:38px;height:20px;cursor:pointer;flex-shrink:0;}
+.big-tog input{opacity:0;width:0;height:0;position:absolute;}
+.btt{position:absolute;inset:0;border-radius:10px;background:var(--s4);border:1px solid var(--border2);transition:.2s;}
+.btt::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:var(--muted);top:2px;left:2px;transition:.2s;}
+.big-tog input:checked~.btt{background:var(--amber);border-color:var(--amber);}
+.big-tog input:checked~.btt::after{transform:translateX(18px);background:#000;}
+
+/* PIN input */
+.pin-in{background:var(--s3);border:1px solid var(--border2);border-radius:5px;color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:18px;padding:10px 12px;outline:none;transition:border-color .15s;letter-spacing:8px;text-align:center;width:100%;}
+.pin-in:focus{border-color:var(--amber);}
+.pin-in::placeholder{letter-spacing:0;font-size:10px;color:var(--muted);}
+
+/* separator */
+.section-sep{border:none;border-top:1px solid var(--border);margin:14px 0;}
+
+/* emailjs help box */
+.emailjs-help{padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:5px;font-size:9px;color:var(--muted);line-height:1.7;margin-bottom:10px;}
+.emailjs-help strong{color:var(--amber);}
+.emailjs-help a{color:var(--amber);}
+.emailjs-help code{color:var(--blue);background:var(--s3);padding:1px 4px;border-radius:2px;}
+
+/* warn box */
+.warn-box{padding:10px 12px;background:var(--red-dim);border:1px solid rgba(232,85,85,.3);border-radius:5px;font-size:10px;color:var(--red);line-height:1.7;margin-bottom:10px;}
+
+/* code input */
+.code-in{background:var(--s3);border:1px solid var(--border2);border-radius:5px;color:var(--amber);font-family:'Bebas Neue';font-size:28px;padding:10px 12px;outline:none;transition:border-color .15s;letter-spacing:10px;text-align:center;width:100%;}
+.code-in:focus{border-color:var(--amber);}
+.code-in::placeholder{color:var(--muted2);font-size:14px;letter-spacing:0;}
+
+/* forgot pin steps */
+.step{display:none;flex-direction:column;gap:8px;}
+.step.on{display:flex;}
+
+/* TABLE */
+.main{display:flex;flex-direction:column;gap:20px;}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.search-in{flex:1;min-width:180px;background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 12px;outline:none;transition:border-color .15s;}
+.search-in:focus{border-color:var(--amber);}
+.search-in::placeholder{color:var(--muted);}
+.filter-btn{font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.5px;padding:7px 12px;border:1px solid var(--border2);background:var(--s2);color:var(--muted);border-radius:5px;cursor:pointer;transition:.15s;}
+.filter-btn:hover,.filter-btn.on{color:var(--amber);border-color:var(--amber);background:var(--amber-dim);}
+.bulk-btn{font-family:'JetBrains Mono',monospace;font-size:9px;padding:7px 12px;border-radius:5px;cursor:pointer;border:1px solid var(--border2);background:var(--s2);color:var(--muted);transition:.15s;}
+.bulk-btn.ok:hover{color:var(--green);border-color:rgba(46,204,138,.4);background:var(--green-dim);}
+.bulk-btn.danger:hover{color:var(--red);border-color:rgba(232,85,85,.4);background:var(--red-dim);}
+.rules-table{background:var(--s1);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.t-head{display:grid;grid-template-columns:34px 1fr 140px 90px 90px 60px;padding:0 16px;height:36px;align-items:center;background:var(--s2);border-bottom:1px solid var(--border);font-size:8.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
+.t-body{min-height:80px;}
+.t-row{display:grid;grid-template-columns:34px 1fr 140px 90px 90px 60px;padding:0 16px;min-height:52px;align-items:center;border-bottom:1px solid var(--border);transition:background .12s;}
+.t-row:last-child{border-bottom:none;}
+.t-row:hover{background:var(--s2);}
+.t-tog{position:relative;width:30px;height:16px;cursor:pointer;}
+.t-tog input{opacity:0;width:0;height:0;position:absolute;}
+.ttt{position:absolute;inset:0;border-radius:8px;background:var(--s4);border:1px solid var(--border2);transition:.2s;}
+.ttt::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:var(--muted);top:2px;left:2px;transition:.2s;}
+.t-tog input:checked~.ttt{background:var(--amber);border-color:var(--amber);}
+.t-tog input:checked~.ttt::after{transform:translateX(14px);background:#000;}
+.t-name-cell{padding:10px 12px 10px 0;display:flex;flex-direction:column;gap:2px;}
+.t-name{font-size:11px;font-weight:700;color:var(--txt);}
+.t-desc{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;}
+.t-sel{font-size:9px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;font-style:italic;}
+.t-site{font-size:10px;color:var(--muted);}
+.t-date{font-size:9px;color:var(--muted2);}
+.t-tags{display:flex;gap:4px;flex-wrap:wrap;}
+.tag{font-size:8px;padding:2px 6px;border-radius:2px;border:1px solid var(--border2);color:var(--muted);}
+.tag.ai{color:var(--amber);border-color:rgba(232,160,48,.25);background:var(--amber-dim);}
+.tag.on{color:var(--green);border-color:rgba(46,204,138,.25);background:var(--green-dim);}
+.t-acts{display:flex;gap:5px;justify-content:flex-end;}
+.act{background:none;border:1px solid transparent;color:var(--muted2);border-radius:3px;cursor:pointer;font-size:12px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;transition:.15s;}
+.act:hover{background:var(--s3);border-color:var(--border2);}
+.act.del:hover{color:var(--red);}
+.t-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:60px;color:var(--muted);font-size:11px;line-height:1.8;text-align:center;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:.2s;}
+.modal-overlay.on{opacity:1;pointer-events:all;}
+.modal{background:var(--s1);border:1px solid var(--border2);border-radius:8px;padding:24px;max-width:360px;width:90%;}
+.modal-title{font-family:'Bebas Neue';font-size:20px;color:var(--red);margin-bottom:10px;}
+.modal-body{font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:20px;}
+.modal-footer{display:flex;gap:10px;}
+.modal-cancel{flex:1;background:var(--s2);border:1px solid var(--border2);color:var(--muted);border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:11px;padding:9px;cursor:pointer;transition:.15s;}
+.modal-cancel:hover{color:var(--txt);}
+.modal-ok{flex:1;background:var(--red);border:none;color:#fff;border-radius:5px;font-family:'Bebas Neue';font-size:16px;padding:9px;cursor:pointer;transition:.15s;}
+.modal-ok:hover{opacity:.85;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--s2);border:1px solid var(--border2);border-radius:4px;padding:9px 18px;font-size:11px;color:var(--txt);opacity:0;pointer-events:none;transition:.25s;z-index:999;white-space:nowrap;}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:rgba(46,204,138,.4);color:var(--green);}
+.toast.bad{border-color:rgba(232,85,85,.4);color:var(--red);}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <div class="nav-mark">⊘</div>
+    <div>
+      <div class="nav-name">No Distraction AI</div>
+      <div class="nav-sub">personal content filter — dashboard</div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <span><span class="sdot" id="api-dot"></span><span id="api-status-txt">No key</span></span>
+    <span id="total-count" style="color:var(--amber)">0 rules</span>
+  </div>
+</nav>
+
+<div class="layout">
+<aside class="sidebar">
+
+  <!-- Stats -->
+  <div class="card">
+    <div class="card-head"><span class="card-title">Stats</span></div>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-num" id="st-total">0</div><div class="stat-label">Total</div></div>
+      <div class="stat"><div class="stat-num" id="st-active">0</div><div class="stat-label">Active</div></div>
+      <div class="stat"><div class="stat-num" id="st-ai">0</div><div class="stat-label">AI Made</div></div>
+      <div class="stat"><div class="stat-num" id="st-sites">0</div><div class="stat-label">Sites</div></div>
+    </div>
+  </div>
+
+  <!-- API Settings -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">API Settings</span>
+      <span style="font-size:9px;color:var(--muted)">stored locally</span>
+    </div>
+    <div class="card-body">
+      <div class="field">
+        <label>Provider</label>
+        <select id="provider-select">
+          <option value="openrouter">OpenRouter</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="custom">Custom endpoint</option>
+        </select>
+      </div>
+      <div class="field" id="custom-url-field" style="display:none">
+        <label>Base URL</label>
+        <input type="text" id="custom-url" placeholder="https://your-api.com/v1"/>
+        <div class="field-hint">OpenAI-compatible format, ending at /v1</div>
+      </div>
+      <div class="field">
+        <label>Model ID</label>
+        <input type="text" id="model-input" placeholder="e.g. anthropic/claude-3-haiku"/>
+        <div class="model-chips" id="model-chips"></div>
+      </div>
+      <div class="field">
+        <label>
+          Extended Thinking Mode
+          <div class="tip">?<div class="tip-box"><strong style="color:var(--amber)">What this does:</strong> Sends a richer prompt to the AI asking it to think beyond obvious CSS selectors — combining text matching, attribute targeting, parent traversal, and multiple fallbacks.<br><br>Uses more tokens per request. Best for stubborn sites like LinkedIn where selectors keep changing.</div></div>
+        </label>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--s3);border:1px solid var(--border2);border-radius:5px;padding:9px 12px;">
+          <span style="font-size:10px;color:var(--muted)">Ask AI to think creatively about blocking strategies</span>
+          <label class="big-tog">
+            <input type="checkbox" id="extended-toggle"/>
+            <span class="btt"></span>
+          </label>
+        </div>
+      </div>
+      <div class="field">
+        <label>🔒 API Key</label>
+        <div class="api-row">
+          <input type="password" class="api-input" id="api-key-input" placeholder="Paste your key…" autocomplete="off" spellcheck="false"/>
+          <button class="api-save-btn" id="api-save-btn">SAVE</button>
+        </div>
+      </div>
+      <div class="api-status" id="api-key-status"></div>
+      <div class="api-warn">⚠ Stored only in this browser profile. Shown as ●●● — only sent to your chosen API endpoint.</div>
+      <button class="sm-btn red" id="api-clear-btn" style="margin-top:8px">✕ Remove API key</button>
+    </div>
+  </div>
+
+  <!-- ══ PIN SECURITY ══ -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">PIN Security</span>
+      <div class="tip">?
+        <div class="tip-box">
+          <strong style="color:var(--amber)">What this does:</strong> Encrypts your API key with AES-256. You enter a 4-digit PIN each time you open the extension.<br><br>
+          <strong style="color:var(--red)">Turning OFF</strong> permanently deletes your API key — you'll need to re-enter it.
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+
+      <!-- Status row + toggle -->
+      <div class="pin-status-row">
+        <div class="pin-status-left">
+          <span id="pin-icon">🔓</span>
+          PIN Encryption
+          <span class="pin-badge" id="pin-badge">OFF</span>
+        </div>
+        <label class="big-tog">
+          <input type="checkbox" id="pin-master-toggle"/>
+          <span class="btt"></span>
+        </label>
+      </div>
+
+      <!-- ── ENABLE FORM (shown when OFF) ── -->
+      <div id="pin-enable-form">
+
+        <div class="field">
+          <label>New PIN — 4 digits</label>
+          <input type="password" class="pin-in" id="pin-new" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="····" autocomplete="new-password"/>
+        </div>
+        <div class="field">
+          <label>Confirm PIN</label>
+          <input type="password" class="pin-in" id="pin-confirm" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="····" autocomplete="new-password"/>
+        </div>
+
+        <hr class="section-sep"/>
+        <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Recovery Email (for Forgot PIN)</div>
+
+        <div class="field">
+          <label>Your Email</label>
+          <input type="email" id="rc-email" placeholder="you@example.com"/>
+          <div class="field-hint">If you forget your PIN, a 6-digit code is sent here to verify it's you. Without this you cannot recover access.</div>
+        </div>
+
+        <hr class="section-sep"/>
+        <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">
+          Email Sender Setup
+          <span style="color:var(--muted);font-weight:400;text-transform:none;font-size:9px;letter-spacing:0"> — needed to send recovery codes</span>
+        </div>
+
+        <div class="emailjs-help">
+          This uses <a href="https://www.emailjs.com" target="_blank">EmailJS</a> (free, 200 emails/month) to send codes directly from your browser — no server needed.<br><br>
+          <strong>Setup takes 2 minutes:</strong><br>
+          1. Create free account at <a href="https://www.emailjs.com" target="_blank">emailjs.com</a><br>
+          2. Add an Email Service (Gmail, Outlook, etc.)<br>
+          3. Create a Template — add two variables: <code>{{to_email}}</code> and <code>{{code}}</code><br>
+          4. Copy your IDs below
+        </div>
+
+        <div class="field">
+          <label>EmailJS Public Key</label>
+          <input type="text" id="rc-pubkey" placeholder="user_xxxxxxxxxxxxxxx"/>
+          <div class="field-hint">Account → API Keys</div>
+        </div>
+        <div class="field">
+          <label>EmailJS Service ID</label>
+          <input type="text" id="rc-service" placeholder="service_xxxxxxx"/>
+          <div class="field-hint">Email Services → your service ID</div>
+        </div>
+        <div class="field">
+          <label>EmailJS Template ID</label>
+          <input type="text" id="rc-template" placeholder="template_xxxxxxx"/>
+          <div class="field-hint">Email Templates → your template ID</div>
+        </div>
+
+        <div class="field-err" id="pin-enable-err" style="margin-top:4px"></div>
+        <button class="act-btn" id="pin-enable-btn" style="margin-top:8px">ENCRYPT &amp; ENABLE PIN</button>
+        <div style="font-size:9px;color:var(--muted);margin-top:8px;line-height:1.6">AES-GCM 256-bit · PBKDF2 200k iterations · PIN is never stored</div>
+      </div>
+
+      <!-- ── DISABLE FORM (shown when ON) ── -->
+      <div id="pin-disable-form" style="display:none">
+
+        <div style="font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:12px">
+          PIN encryption is active. Disabling it will <strong style="color:var(--red)">permanently delete your API key</strong> — you'll need to re-enter it afterwards.
+        </div>
+
+        <div class="field">
+          <label>Enter Current PIN to Disable</label>
+          <input type="password" class="pin-in" id="pin-current" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="····"/>
+        </div>
+        <div class="field-err" id="pin-disable-err"></div>
+        <button class="act-btn red" id="pin-disable-btn">VERIFY PIN &amp; DISABLE</button>
+
+        <hr class="section-sep"/>
+
+        <!-- Forgot PIN -->
+        <button class="sm-btn" id="forgot-toggle" style="width:100%;text-align:center">Forgot PIN? →</button>
+
+        <div id="forgot-flow" style="display:none;margin-top:12px">
+
+          <!-- Step 1: enter email -->
+          <div class="step on" id="fp-s1">
+            <div style="font-size:9px;color:var(--muted);line-height:1.6">
+              Enter the recovery email you registered when enabling PIN. A 6-digit code will be sent to verify it's you.
+            </div>
+            <div class="field" style="margin-bottom:4px">
+              <label>Your Recovery Email</label>
+              <input type="email" id="fp-email" placeholder="you@example.com"/>
+            </div>
+            <div class="field-err" id="fp-s1-err"></div>
+            <button class="act-btn" id="fp-send-btn">SEND VERIFICATION CODE</button>
+          </div>
+
+          <!-- Step 2: enter code -->
+          <div class="step" id="fp-s2">
+            <div style="font-size:9px;color:var(--muted);line-height:1.6">
+              Check your email. Code expires in <strong style="color:var(--amber)" id="fp-timer">10:00</strong>.
+            </div>
+            <input type="text" class="code-in" id="fp-code" maxlength="6" inputmode="numeric" placeholder="000000"/>
+            <div class="field-err" id="fp-s2-err"></div>
+            <button class="act-btn" id="fp-verify-btn">VERIFY CODE</button>
+            <button class="act-btn outline" id="fp-resend-btn">← Send a new code</button>
+          </div>
+
+          <!-- Step 3: confirm deletion -->
+          <div class="step" id="fp-s3">
+            <div class="warn-box">
+              ⚠ <strong>Last warning.</strong><br><br>
+              Your API key will be <strong>permanently deleted</strong> and PIN encryption disabled. There is no way to recover the key.<br><br>
+              You will need to paste your API key again after this.
+            </div>
+            <button class="act-btn red" id="fp-confirm-btn">DELETE KEY &amp; DISABLE PIN</button>
+            <button class="act-btn outline" id="fp-cancel-btn" style="margin-top:6px">Cancel</button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Add Manual Rule -->
+  <div class="card">
+    <div class="card-head"><span class="card-title">Add Rule Manually</span></div>
+    <div class="card-body">
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="m-name" placeholder="e.g. Hide YouTube Shorts"/>
+      </div>
+      <div class="field">
+        <label>Site(s)</label>
+        <input type="text" id="m-site" placeholder="youtube.com"/>
+        <div class="field-hint">Comma-separate for multiple sites</div>
+      </div>
+      <div class="field">
+        <label>CSS Selector</label>
+        <textarea id="m-sel" rows="3" placeholder="ytd-reel-shelf-renderer, #shorts"></textarea>
+        <div class="field-hint">Can target any part of the page — headers, sidebars, feeds, banners, comment sections, etc.<br><br>⚠ Not recommended for ad blocking — may conflict with site terms.</div>
+      </div>
+      <div class="field">
+        <label>Presets</label>
+        <div class="presets" id="presets"></div>
+      </div>
+      <div class="field">
+        <label>Note (optional)</label>
+        <input type="text" id="m-desc" placeholder="What does this hide?"/>
+      </div>
+      <button class="act-btn" id="add-rule-btn">ADD RULE</button>
+    </div>
+  </div>
+
+  <!-- Import / Export -->
+  <div class="card">
+    <div class="card-head"><span class="card-title">Import / Export</span></div>
+    <div class="card-body">
+      <div class="io-row">
+        <button class="io-btn" id="export-btn">↓ Export JSON</button>
+        <button class="io-btn" id="import-btn">↑ Import JSON</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none"/>
+    </div>
+  </div>
+
+</aside>
+
+<!-- MAIN TABLE -->
+<main class="main">
+  <div class="toolbar">
+    <input class="search-in" id="search" placeholder="Search rules, sites, selectors…"/>
+    <button class="filter-btn on" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="active">Active</button>
+    <button class="filter-btn" data-filter="ai">AI Rules</button>
+    <button class="bulk-btn ok" id="enable-all-btn">Enable All</button>
+    <button class="bulk-btn danger" id="delete-all-btn">Delete All</button>
+  </div>
+  <div class="rules-table">
+    <div class="t-head">
+      <div></div><div>Rule</div><div>Site</div><div>Created</div><div>Tags</div><div>Actions</div>
+    </div>
+    <div class="t-body" id="t-body"></div>
+  </div>
+</main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Confirm</div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="modal-cancel" id="modal-cancel">Cancel</button>
+      <button class="modal-ok" id="modal-ok">DELETE</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="crypto-utils.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>No Distraction AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080809; --s1:#0f0f11; --s2:#161618; --s3:#1d1d20; --s4:#222226;
+  --border:#272729; --border2:#333337;
+  --amber:#e8a030; --amber-dim:rgba(232,160,48,.12); --amber-glow:rgba(232,160,48,.05);
+  --green:#2ecc8a; --red:#e85555; --txt:#dcdce0; --muted:#565660; --muted2:#3a3a44;
+}
+body{
+  width:360px; height:540px;
+  background:var(--bg); color:var(--txt);
+  font-family:'JetBrains Mono',monospace; font-size:11px;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+body::before{
+  content:''; position:fixed; inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px);
+  pointer-events:none; z-index:100;
+}
+
+/* ── HEADER ── */
+.hdr{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 14px 9px; background:var(--s1); border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.logo{display:flex;align-items:center;gap:9px;}
+.logo-mark{
+  width:28px;height:28px; border:1.5px solid var(--amber); border-radius:4px;
+  display:flex;align-items:center;justify-content:center; font-size:13px;
+  box-shadow:0 0 10px var(--amber-dim),inset 0 0 8px var(--amber-glow);
+}
+.logo-name{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1.5px;color:var(--amber);line-height:1;}
+.logo-tag{font-size:8px;color:var(--muted);letter-spacing:.5px;margin-top:2px;}
+.hdr-btns{display:flex;gap:5px;}
+.hdr-btn{
+  background:var(--s2);border:1px solid var(--border);color:var(--muted);
+  width:26px;height:26px;border-radius:4px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:11px;transition:.15s;
+}
+.hdr-btn:hover{color:var(--amber);border-color:var(--amber);background:var(--amber-dim);}
+
+/* ── SITE BAR ── */
+.site-bar{
+  display:flex;align-items:center;gap:8px;padding:6px 14px;
+  background:var(--s2);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.pulse{
+  width:6px;height:6px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 6px var(--green);flex-shrink:0;animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.site-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+.site-host{color:var(--txt);font-size:10px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.site-badge{font-size:9px;padding:2px 7px;border-radius:2px;border:1px solid var(--border2);color:var(--muted);white-space:nowrap;flex-shrink:0;}
+.site-badge.has{color:var(--amber);border-color:rgba(232,160,48,.3);background:var(--amber-dim);}
+
+/* ── TABS ── */
+.tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab{
+  flex:1;padding:7px 4px;font-family:'JetBrains Mono',monospace;font-size:9px;
+  text-transform:uppercase;letter-spacing:.8px;color:var(--muted);
+  background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:.15s;
+}
+.tab.on{color:var(--amber);border-bottom-color:var(--amber);background:var(--amber-glow);}
+.tab:hover:not(.on){color:var(--txt);}
+
+/* ── PANELS ── */
+.panel{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.panel.on{display:flex;}
+
+/* ── CHAT ── */
+.chat-msgs{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;}
+.chat-msgs::-webkit-scrollbar{width:3px;}
+.chat-msgs::-webkit-scrollbar-thumb{background:var(--border2);}
+.msg{display:flex;flex-direction:column;gap:3px;max-width:92%;}
+.msg.user{align-self:flex-end;}
+.msg.ai{align-self:flex-start;}
+.msg-who{font-size:8px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
+.msg.user .msg-who{text-align:right;color:rgba(232,160,48,.6);}
+.msg-bubble{padding:8px 11px;border-radius:4px;font-size:11px;line-height:1.6;}
+.msg.user .msg-bubble{background:var(--amber-dim);border:1px solid rgba(232,160,48,.2);}
+.msg.ai .msg-bubble{background:var(--s2);border:1px solid var(--border);}
+.msg.ai.err .msg-bubble{border-color:rgba(232,85,85,.3);color:var(--red);}
+.rule-chip{
+  display:inline-flex;align-items:center;gap:5px;margin-top:6px;
+  padding:4px 9px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.25);
+  border-radius:3px;font-size:9px;color:var(--green);
+}
+.typing span{
+  display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--amber);
+  margin:0 2px;animation:dot .9s infinite;
+}
+.typing span:nth-child(2){animation-delay:.2s;}
+.typing span:nth-child(3){animation-delay:.4s;}
+@keyframes dot{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+.chat-foot{padding:8px;border-top:1px solid var(--border);background:var(--s1);flex-shrink:0;}
+.chat-row{display:flex;gap:6px;align-items:flex-end;}
+.chat-in{
+  flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:4px;
+  color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:11px;
+  padding:7px 10px;resize:none;outline:none;line-height:1.5;max-height:80px;transition:border-color .15s;
+}
+.chat-in:focus{border-color:var(--amber);}
+.chat-in::placeholder{color:var(--muted);}
+.send{
+  width:32px;height:32px;background:var(--amber);border:none;border-radius:4px;
+  color:#000;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:.15s;font-weight:700;
+}
+.send:hover{opacity:.85;}
+.send:disabled{opacity:.3;cursor:not-allowed;}
+.chat-hint{font-size:9px;color:var(--muted);margin-top:5px;padding:0 2px;}
+
+/* ── RULES PANEL ── */
+.rules-scroll{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:5px;}
+.rules-scroll::-webkit-scrollbar{width:3px;}
+.rules-scroll::-webkit-scrollbar-thumb{background:var(--border2);}
+
+.rule-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:4px;
+  padding:9px 11px;display:flex;align-items:center;gap:9px;transition:.15s;
+}
+.rule-card:hover{border-color:var(--border2);}
+.rule-card.other{opacity:.4;}
+
+/* toggle — fixed: label wraps the real checkbox, pointer-events on label */
+.tog-wrap{position:relative;width:30px;height:16px;flex-shrink:0;cursor:pointer;}
+.tog-wrap input{position:absolute;opacity:0;width:0;height:0;}
+.tog-track{
+  position:absolute;inset:0;border-radius:8px;
+  background:var(--s4);border:1px solid var(--border2);transition:.2s;
+}
+.tog-track::after{
+  content:'';position:absolute;width:10px;height:10px;border-radius:50%;
+  background:var(--muted);top:2px;left:2px;transition:.2s;
+}
+.tog-wrap input:checked ~ .tog-track{background:var(--amber);border-color:var(--amber);}
+.tog-wrap input:checked ~ .tog-track::after{transform:translateX(14px);background:#000;}
+
+.rule-info{flex:1;min-width:0;}
+.rule-name{font-size:10px;font-weight:700;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rule-meta{display:flex;align-items:center;gap:5px;margin-top:2px;}
+.rule-site{font-size:8.5px;color:var(--muted);padding:1px 5px;border:1px solid var(--border2);border-radius:2px;background:var(--s3);}
+.rule-ai{font-size:8px;color:var(--amber);padding:1px 5px;border:1px solid rgba(232,160,48,.25);background:var(--amber-dim);border-radius:2px;}
+.rule-del{background:none;border:none;color:var(--muted2);cursor:pointer;font-size:13px;padding:2px 4px;transition:.15s;flex-shrink:0;}
+.rule-del:hover{color:var(--red);}
+
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;padding:40px 16px;color:var(--muted);flex:1;text-align:center;font-size:10px;line-height:1.8;
+}
+.empty-icon{font-size:28px;opacity:.25;}
+
+/* ── NO-KEY BAR ── */
+.no-key-bar{
+  padding:7px 12px;background:rgba(232,160,48,.07);border-bottom:1px solid rgba(232,160,48,.2);
+  font-size:9px;color:var(--amber);display:flex;align-items:center;gap:6px;flex-shrink:0;
+}
+.no-key-bar a{color:var(--amber);text-decoration:underline;cursor:pointer;}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:10px;left:50%;transform:translateX(-50%) translateY(16px);
+  background:var(--s2);border:1px solid var(--border2);border-radius:3px;
+  padding:6px 14px;font-size:10px;color:var(--txt);opacity:0;pointer-events:none;
+  transition:.25s;white-space:nowrap;z-index:999;
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:rgba(46,204,138,.4);color:var(--green);}
+.toast.bad{border-color:rgba(232,85,85,.4);color:var(--red);}
+
+/* ══════════════════════════════════════════
+   PIN LOCK SCREEN — overlays entire popup
+══════════════════════════════════════════ */
+#pin-screen{
+  position:fixed;inset:0;z-index:500;
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0;padding:28px 24px;
+}
+#pin-screen.hidden{display:none;}
+
+.pin-logo{
+  display:flex;align-items:center;gap:10px;margin-bottom:22px;
+}
+.pin-logo-mark{
+  width:34px;height:34px;border:2px solid var(--amber);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+  box-shadow:0 0 14px var(--amber-dim);
+}
+.pin-logo-name{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--amber);}
+
+.pin-lock-icon{font-size:28px;margin-bottom:10px;opacity:.7;}
+
+.pin-title{
+  font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;
+  color:var(--txt);margin-bottom:5px;
+}
+.pin-sub{font-size:9px;color:var(--muted);text-align:center;line-height:1.7;margin-bottom:20px;}
+
+.pin-dots{
+  display:flex;gap:10px;margin-bottom:18px;
+}
+.pin-dot{
+  width:12px;height:12px;border-radius:50%;
+  border:2px solid var(--border2);background:transparent;
+  transition:.15s;
+}
+.pin-dot.filled{background:var(--amber);border-color:var(--amber);}
+
+.pin-hidden-input{
+  position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;
+}
+
+.numpad{
+  display:grid;grid-template-columns:repeat(3,60px);gap:8px;margin-bottom:16px;
+}
+.num-btn{
+  height:44px;background:var(--s2);border:1px solid var(--border);border-radius:6px;
+  color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;
+  cursor:pointer;transition:.12s;user-select:none;
+}
+.num-btn:hover{background:var(--s3);border-color:var(--border2);}
+.num-btn:active{background:var(--amber-dim);border-color:var(--amber);color:var(--amber);}
+.num-btn.del-btn{font-size:16px;color:var(--muted);}
+.num-btn.del-btn:hover{color:var(--red);}
+.num-btn.zero{grid-column:2;}
+
+.pin-unlock-btn{
+  width:180px;height:40px;background:var(--amber);border:none;border-radius:6px;
+  color:#000;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;
+  cursor:pointer;transition:.15s;
+}
+.pin-unlock-btn:hover{opacity:.85;}
+.pin-unlock-btn:disabled{opacity:.3;cursor:not-allowed;}
+
+.pin-error{
+  font-size:10px;color:var(--red);margin-top:10px;min-height:16px;text-align:center;
+}
+
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}
+.shake{animation:shake .4s ease;}
+
+.pin-forgot-btn{
+  background:none;border:none;color:var(--muted);font-family:'JetBrains Mono',monospace;
+  font-size:9px;cursor:pointer;margin-top:8px;text-decoration:underline;transition:.15s;
+}
+.pin-forgot-btn:hover{color:var(--amber);}
+
+/* ── AGENT STEPS ── */
+.agent-step{
+  display:flex;align-items:flex-start;gap:7px;
+  padding:6px 10px;margin:2px 0;
+  background:var(--s2);border:1px solid var(--border);border-radius:4px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);
+  line-height:1.5;
+}
+.agent-step.done{border-color:var(--border2);}
+.agent-step .step-icon{flex-shrink:0;font-size:12px;margin-top:1px;}
+.agent-step .step-text{word-break:break-all;}
+
+.mem-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:4px 10px;background:var(--s2);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.mem-label{font-size:8px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;}
+.mem-clear{
+  background:none;border:none;color:var(--muted2);font-family:'JetBrains Mono',monospace;
+  font-size:8px;cursor:pointer;padding:2px 6px;border-radius:3px;transition:.15s;
+}
+.mem-clear:hover{color:var(--red);}
+
+.think-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;margin:4px 0;
+  background:var(--amber-dim);border:1px solid rgba(232,160,48,.2);border-radius:4px;
+  font-size:9px;color:var(--amber);position:sticky;bottom:0;
+}
+.think-bar .typing span{background:var(--amber);}
+</style>
+</head>
+<body>
+
+<!-- ══ PIN LOCK SCREEN ══ -->
+<div id="pin-screen" class="hidden">
+  <div class="pin-logo">
+    <div class="pin-logo-mark">⊘</div>
+    <div class="pin-logo-name">No Distraction AI</div>
+  </div>
+  <div class="pin-lock-icon">🔒</div>
+  <div class="pin-title">PIN Required</div>
+  <div class="pin-sub">Your API key is encrypted.<br>Enter your PIN to unlock.</div>
+
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+
+  <input type="password" class="pin-hidden-input" id="pin-hidden" maxlength="8" inputmode="numeric"/>
+
+  <div class="numpad" id="numpad">
+    <button class="num-btn" data-n="1">1</button>
+    <button class="num-btn" data-n="2">2</button>
+    <button class="num-btn" data-n="3">3</button>
+    <button class="num-btn" data-n="4">4</button>
+    <button class="num-btn" data-n="5">5</button>
+    <button class="num-btn" data-n="6">6</button>
+    <button class="num-btn" data-n="7">7</button>
+    <button class="num-btn" data-n="8">8</button>
+    <button class="num-btn" data-n="9">9</button>
+    <button class="num-btn del-btn" data-n="del">⌫</button>
+    <button class="num-btn zero" data-n="0">0</button>
+  </div>
+
+  <div class="pin-error" id="pin-error"></div>
+  <button class="pin-forgot-btn" id="forgot-pin-btn">Forgot PIN? Open Dashboard →</button>
+</div>
+
+<!-- ══ MAIN UI ══ -->
+<div id="main-ui">
+  <div class="hdr">
+    <div class="logo">
+      <div class="logo-mark">⊘</div>
+      <div>
+        <div class="logo-name">No Distraction AI</div>
+        <div class="logo-tag">personal content filter</div>
+      </div>
+    </div>
+    <div class="hdr-btns">
+      <button class="hdr-btn" id="btn-refresh" title="Re-apply rules to page">↺</button>
+      <button class="hdr-btn" id="btn-dash" title="Open Dashboard">⊞</button>
+    </div>
+  </div>
+
+  <div class="site-bar">
+    <div class="pulse"></div>
+    <span class="site-label">site</span>
+    <span class="site-host" id="site-host">—</span>
+    <span class="site-badge" id="site-badge">0 rules</span>
+  </div>
+
+  <div id="no-key-bar" class="no-key-bar" style="display:none">
+    ⚠ No API key set. <a id="go-dash">Open Dashboard →</a>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="chat">AI Chat</button>
+    <button class="tab" data-tab="rules">Rules</button>
+  </div>
+
+  <!-- CHAT -->
+  <div class="panel on" id="panel-chat">
+    <div class="mem-bar">
+      <span class="mem-label">🧠 <span id="mem-count">0</span> memory msgs for this site</span>
+      <button class="mem-clear" id="mem-clear-btn" title="Clear memory for this site">✕ clear</button>
+    </div>
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="msg ai">
+        <span class="msg-who">no distraction ai</span>
+        <div class="msg-bubble">
+          I'm your blocking agent. Tell me what to hide and I'll inspect the page, find the right elements, and verify they work before saving.<br><br>
+          <span style="color:var(--muted);font-size:10px">e.g. "hide all shorts" · "remove the sidebar" · "block suggested posts"</span><br><br>
+          <span style="color:var(--muted);font-size:9px">⚠ Not recommended for blocking ads — may conflict with site terms.</span>
+        </div>
+      </div>
+    </div>
+    <div class="chat-foot">
+      <div class="chat-row">
+        <textarea class="chat-in" id="chat-in" rows="1" placeholder="Describe what to block…"></textarea>
+        <button class="send" id="send-btn">▲</button>
+      </div>
+      <div class="chat-hint">Enter to send · Shift+Enter for newline</div>
+    </div>
+  </div>
+
+  <!-- RULES -->
+  <div class="panel" id="panel-rules">
+    <div class="rules-scroll" id="rules-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="crypto-utils.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
