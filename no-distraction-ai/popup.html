@@ -292,6 +292,18 @@ body::before{
   font-size:9px;color:var(--amber);position:sticky;bottom:0;
 }
 .think-bar .typing span{background:var(--amber);}
+
+.export-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:4px 10px;background:var(--s1);border-top:1px solid var(--border);
+  flex-shrink:0;
+}
+.export-btn{
+  background:none;border:1px solid var(--border2);color:var(--muted);
+  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.4px;
+  text-transform:uppercase;padding:4px 9px;border-radius:3px;cursor:pointer;transition:.15s;
+}
+.export-btn:hover{color:var(--amber);border-color:var(--amber);background:var(--amber-dim);}
 </style>
 </head>
 <body>
@@ -379,6 +391,12 @@ body::before{
           <span style="color:var(--muted);font-size:10px">e.g. "hide all shorts" · "remove the sidebar" · "block suggested posts"</span><br><br>
           <span style="color:var(--muted);font-size:9px">⚠ Not recommended for blocking ads — may conflict with site terms.</span>
         </div>
+      </div>
+    </div>
+    <div class="export-bar">
+      <span style="font-size:8px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase">session</span>
+      <div style="display:flex;gap:5px">
+        <button class="export-btn" id="export-chat-btn" title="Export chat + reasoning + rules as markdown">↓ Export Session</button>
       </div>
     </div>
     <div class="chat-foot">

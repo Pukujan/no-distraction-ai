@@ -9,7 +9,9 @@ const SES_ATTEMPTS = 'nda_pin_attempts';
 const SES_LOCKOUT  = 'nda_pin_lockout_until';
 const MEM_PREFIX   = 'nda_mem_';
 const CHAT_PREFIX  = 'nda_chat_';  // per-site chat UI history
+const TRACE_PREFIX = 'nda_trace_'; // per-site agent reasoning traces
 const MAX_CHAT_MSGS = 30;
+const MAX_TRACES = 10;            // keep last 10 agent sessions per site
 const MAX_MEM_MSGS = 20;
 const MAX_ATTEMPTS     = 10;
 const ATTEMPT_DELAY_MS = 5000;
@@ -82,6 +84,22 @@ async function restoreChatHistory() {
     container.appendChild(d);
   });
   container.scrollTop = 9999;
+}
+
+// ── REASONING TRACE ──────────────────────────────────
+function traceKey() { return TRACE_PREFIX + (currentHost || 'unknown'); }
+
+async function saveTrace(trace) {
+  const d = await chrome.storage.local.get(traceKey());
+  const traces = d[traceKey()] || [];
+  traces.push(trace);
+  if (traces.length > MAX_TRACES) traces.splice(0, traces.length - MAX_TRACES);
+  await chrome.storage.local.set({ [traceKey()]: traces });
+}
+
+async function loadTraces() {
+  const d = await chrome.storage.local.get(traceKey());
+  return d[traceKey()] || [];
 }
 
 // ── BOOT ──────────────────────────────────────────────
@@ -746,6 +764,34 @@ Be thorough. Try at least 6 different selector strategies before concluding.
 
   hideThinking();
   await updateMemCount();
+
+  // Save full reasoning trace for this session
+  // messages[] contains the complete record: user requests, agent JSON actions, tool results
+  const traceRecord = {
+    ts:       Date.now(),
+    site:     currentHost,
+    userMsg:  text,
+    model:    config.model || defaultModel(config.provider||'openrouter'),
+    provider: config.provider || 'openrouter',
+    turns:    messages.length,
+    // Full messages array — every action, tool result, and DOM snapshot
+    trace: messages.map(m => ({
+      role:    m.role,
+      content: typeof m.content === 'string'
+        ? m.content
+        : JSON.stringify(m.content)
+    })),
+    // Rules that exist after this session
+    ruleSnapshot: rules.filter(r => matchesSite(r.site)).map(r => ({
+      id:       r.id,
+      name:     r.name,
+      selectors:(r.jsRule||{}).selectors||[],
+      textContains:(r.jsRule||{}).textContains||[],
+      parentSteps:(r.jsRule||{}).parentSteps||0
+    }))
+  };
+  await saveTrace(traceRecord);
+
   agentRunning=false;
   sendBtn.disabled=!apiKey;
 }
@@ -784,6 +830,174 @@ function toast(msg,type=''){
   const el=document.getElementById('toast');
   el.textContent=msg; el.className='toast on'+(type?' '+type:'');
   clearTimeout(tTimer); tTimer=setTimeout(()=>el.className='toast',2200);
+}
+
+// ══════════════════════════════════════════════════════
+//  SESSION EXPORT
+// ══════════════════════════════════════════════════════
+
+document.getElementById('export-chat-btn')?.addEventListener('click', exportSession);
+
+async function exportSession() {
+  const siteRules  = rules.filter(r => matchesSite(r.site));
+  const chatHistory = await loadChatHistory();
+  const memory      = await loadMemory();
+  const now         = new Date();
+  const dateStr     = now.toISOString().slice(0, 16).replace('T', ' ');
+
+  // ── Build markdown report ───────────────────────────
+  let md = `# No Distraction AI — Session Export\n`;
+  md += `**Site:** ${currentHost}  \n`;
+  md += `**Exported:** ${dateStr}  \n`;
+  md += `**Rules saved for this site:** ${siteRules.length}\n\n`;
+  md += `---\n\n`;
+
+  // ── Rules section ───────────────────────────────────
+  if (siteRules.length > 0) {
+    md += `## Active Rules\n\n`;
+    siteRules.forEach((r, i) => {
+      const jr = r.jsRule || {};
+      md += `### ${i+1}. ${r.name}\n`;
+      md += `> ${r.desc || 'No description'}\n\n`;
+      if (jr.selectors && jr.selectors.length) {
+        md += `**CSS Selectors:**\n\`\`\`\n${jr.selectors.join('\n')}\`\`\`\n\n`;
+      }
+      if (jr.textContains && jr.textContains.length) {
+        md += `**Text matching:** \`${jr.textContains.join('", "')}\`  \n`;
+        md += `**Text scope:** \`${jr.textScope || 'document body'}\`  \n`;
+      }
+      md += `**Parent steps:** ${jr.parentSteps || 0} (climbs ${jr.parentSteps || 0} level${(jr.parentSteps||0)===1?'':'s'} up from matched element)  \n`;
+      md += `**Poll interval:** ${jr.pollInterval || 500}ms  \n`;
+      md += `**Created:** ${new Date(r.created).toLocaleString()}  \n`;
+      md += `**Source:** ${r.ai ? 'AI agent' : 'Manual'}\n\n`;
+    });
+    md += `---\n\n`;
+  }
+
+  // ── Chat transcript with reasoning ──────────────────
+  if (chatHistory.length > 0) {
+    md += `## Agent Session Transcript\n\n`;
+    md += `*Full conversation including agent reasoning, tool calls, and results.*\n\n`;
+
+    chatHistory.forEach(msg => {
+      if (msg.role === 'user') {
+        // Strip HTML tags from user messages
+        const text = msg.html.replace(/<[^>]*>/g, '').trim();
+        md += `**You:** ${text}\n\n`;
+      } else if (msg.role === 'ai') {
+        // Parse agent steps vs regular messages
+        const html = msg.html;
+        if (html.includes('agent-step') || html.includes('step-icon')) {
+          // It's a tool step — strip HTML cleanly
+          const text = html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+          md += `> 🔧 **Tool:** ${text}\n\n`;
+        } else {
+          const text = html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim();
+          md += `**Agent:** ${text}\n\n`;
+        }
+      }
+    });
+    md += `---\n\n`;
+  }
+
+  // ── Agent memory (what it learned) ──────────────────
+  if (memory.length > 0) {
+    md += `## Agent Memory (What It Learned)\n\n`;
+    md += `*The agent retains these observations for future sessions on ${currentHost}.*\n\n`;
+    memory.slice(-20).forEach(m => {
+      const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+      const ts = m.ts ? new Date(m.ts).toLocaleTimeString() : '';
+      if (m.role === 'user') {
+        md += `- **Result [${ts}]:** ${content.slice(0, 300)}${content.length > 300 ? '…' : ''}\n`;
+      } else if (m.role === 'assistant') {
+        md += `- **Agent [${ts}]:** ${content.slice(0, 300)}${content.length > 300 ? '…' : ''}\n`;
+      }
+    });
+    md += `\n---\n\n`;
+  }
+
+  // ── Machine-readable reasoning traces ──────────────────
+  const traces = await loadTraces();
+  if (traces.length > 0) {
+    md += `## Machine-Readable Reasoning Traces\n\n`;
+    md += `*Full agent reasoning — every action, tool call input, DOM snapshot, and selector test result.*\n\n`;
+    md += `Contains the last ${traces.length} agent session${traces.length===1?'':'s'} on ${currentHost}.\n\n`;
+
+    traces.forEach((t, ti) => {
+      const ts = new Date(t.ts).toLocaleString();
+      md += `### Session ${ti+1} — ${ts}\n`;
+      md += `**User request:** "${t.userMsg}"  \n`;
+      md += `**Model:** \`${t.model}\` via ${t.provider}  \n`;
+      md += `**Turns:** ${t.turns}\n\n`;
+
+      // Parse each message in the trace and format readably
+      t.trace.forEach((m, mi) => {
+        if (m.role === 'user' && mi === 0) return; // skip initial user msg, already shown above
+
+        if (m.role === 'assistant') {
+          // Try to parse as JSON action
+          let parsed = null;
+          try {
+            const clean = m.content.replace(/^\`\`\`json?\s*/i,'').replace(/\s*\`\`\`$/,'').trim();
+            parsed = JSON.parse(clean);
+          } catch(_) {
+            const match = m.content.match(/\{[\s\S]*\}/);
+            if (match) try { parsed = JSON.parse(match[0]); } catch(_) {}
+          }
+
+          if (parsed) {
+            md += `**→ Agent action \`${parsed.action}\`**`;
+            if (parsed.message) md += `: ${parsed.message}`;
+            md += '  \n';
+            if (parsed.selector !== undefined) md += `  - selector: \`${parsed.selector || '(full page)'}\`  \n`;
+            if (parsed.selectors) md += `  - selectors: \`${parsed.selectors.join('`, `')}\`  \n`;
+            if (parsed.parentSteps) md += `  - parentSteps: ${parsed.parentSteps}  \n`;
+            if (parsed.textContains) md += `  - textContains: \`${parsed.textContains.join('", "')}\`  \n`;
+            if (parsed.name) md += `  - rule name: "${parsed.name}"  \n`;
+            md += '\n';
+          } else {
+            md += `**→ Agent:** ${m.content.slice(0,200)}${m.content.length>200?'…':''}\n\n`;
+          }
+        } else if (m.role === 'user') {
+          // Tool result
+          const content = m.content.slice(0, 600);
+          const truncated = m.content.length > 600;
+          md += `**← Tool result:**\n\`\`\`\n${content}${truncated ? '\n[truncated…]' : ''}\n\`\`\`\n\n`;
+        }
+      });
+
+      // Rule snapshot at end of session
+      if (t.ruleSnapshot && t.ruleSnapshot.length) {
+        md += `**Rules after this session:**\n`;
+        t.ruleSnapshot.forEach(r => {
+          md += `- \`${r.name}\` — selectors: ${r.selectors.length}, textContains: ${r.textContains.length}, parentSteps: ${r.parentSteps}\n`;
+        });
+        md += '\n';
+      }
+      md += `---\n\n`;
+    });
+
+    // Also export traces as raw JSON for programmatic use
+    md += `### Raw Trace JSON\n\n`;
+    md += `\`\`\`json\n${JSON.stringify(traces, null, 2).slice(0, 8000)}${JSON.stringify(traces).length > 8000 ? '\n// [truncated — full data in extension storage]' : ''}\n\`\`\`\n\n`;
+    md += `---\n\n`;
+  }
+
+  // ── Import-ready rule JSON ────────────────────────────
+  md += `## Rule Import Data (JSON)\n\n`;
+  md += `*Paste into Dashboard → Import JSON to restore these rules.*\n\n`;
+  md += `\`\`\`json\n${JSON.stringify({ rules: siteRules, site: currentHost, exported: now.toISOString() }, null, 2)}\`\`\`\n`;
+
+  // ── Download ─────────────────────────────────────────
+  const filename = `nda-session-${currentHost}-${now.toISOString().slice(0,10)}.md`;
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Session exported ↓', 'ok');
 }
 
 boot();
