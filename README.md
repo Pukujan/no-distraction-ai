@@ -13,7 +13,6 @@ Two models that work well with this extension via [OpenRouter](https://openroute
 | Model | Cost | Best for |
 |-------|------|----------|
 | `qwen/qwen3-coder-next` | Very cheap | Strong at DOM inspection, structured JSON output, selector generation |
-| `meta-llama/llama-3.1-8b-instruct:free` | **Free** | Basic blocking tasks, simple pages |
 
 Set either in **Dashboard → API Settings → Model ID**.  
 For harder tasks (complex SPAs, stubborn pages) try `anthropic/claude-3-5-sonnet` or `openai/gpt-4o-mini`.
