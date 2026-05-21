@@ -16,7 +16,6 @@ Two models that work well with this extension via [OpenRouter](https://openroute
 | `z-ai/glm-5.1` | Moderately Expensive | Top Coding Competitor |
 
 Set either in **Dashboard → API Settings → Model ID**.  
-For harder tasks (complex SPAs, stubborn pages) try `anthropic/claude-3-5-sonnet` or `openai/gpt-4o-mini`.
 
 ---
 
